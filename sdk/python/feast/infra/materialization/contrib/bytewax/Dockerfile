@@ -1,4 +1,7 @@
-FROM $FEDORA_BASE_IMAGE:$BASE_IMAGE_TAG
+FROM python:3.9-slim-bullseye AS build
+
+RUN apt-get update && \
+    apt-get install --no-install-suggests --no-install-recommends --yes git
 
 WORKDIR /bytewax
 
@@ -22,6 +25,5 @@ COPY README.md README.md
 # git dir to infer the version of feast we're installing.
 # https://github.com/pypa/setuptools_scm#usage-from-docker
 # I think it also assumes that this dockerfile is being built from the root of the directory.
-RUN dnf install -y git
-RUN --mount=source=.git,target=.git,type=bind pip3 install --no-cache-dir '.[aws,gcp,bytewax,snowflake]'
+RUN --mount=source=.git,target=.git,type=bind pip3 install --no-cache-dir -e '.[aws,gcp,bytewax]'
 
