@@ -1,3 +1,4 @@
+import sys
 import uuid
 from datetime import datetime
 from typing import Callable, List, Literal, Sequence, Union
@@ -28,11 +29,15 @@ from feast.repo_config import FeastConfigBaseModel
 from feast.stream_feature_view import StreamFeatureView
 from feast.utils import _get_column_names, get_default_yaml_file_path
 from time import sleep
+import signal
 
 from .bytewax_materialization_job import BytewaxMaterializationJob
 
 logger = logging.getLogger(__name__)
 
+def term_handler(signum, frame):
+    logger.info("Received SIGTERM. Shutting down")
+    sys.exit(0)
 
 class BytewaxMaterializationEngineConfig(FeastConfigBaseModel):
     """Batch Materialization Engine config for Bytewax"""
@@ -107,6 +112,8 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
         self.batch_v1 = client.BatchV1Api(self.k8s_client)
         self.batch_engine_config = repo_config.batch_engine
         self.namespace = self.batch_engine_config.namespace
+
+        signal.signal(signal.SIGTERM, term_handler)
 
     def update(
         self,
@@ -190,8 +197,8 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
                     logger.info(f"{feature_view.name} materialization still running...")
                     sleep(30)
                 logger.info(f"{feature_view.name} materialization complete with status {job.status()}")
-            except KeyboardInterrupt as e:
-                logger.info(f"SIGINT received. Killing job {job.job_id()}")
+            except (KeyboardInterrupt, BaseException) as e:
+                logger.info(f"Killing job {job.job_id()}")
                 self.batch_v1.delete_namespaced_job(job.job_id(), self.namespace)
                 raise e
             self._print_pod_logs(job.job_id(), feature_view)
