@@ -185,22 +185,27 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
         job_id = str(uuid.uuid4())
         job = self._create_kubernetes_job(job_id, paths, feature_view)
         if self.batch_engine_config.synchronous:
-            while job.status() in (MaterializationJobStatus.WAITING, MaterializationJobStatus.RUNNING):
-                logger.info(f"{feature_view.name} materialization still running...")
-                sleep(30)
-            logger.info(f"{feature_view.name} materialization complete with status {job.status()}")
+            try:
+                while job.status() in (MaterializationJobStatus.WAITING, MaterializationJobStatus.RUNNING):
+                    logger.info(f"{feature_view.name} materialization still running...")
+                    sleep(30)
+                logger.info(f"{feature_view.name} materialization complete with status {job.status()}")
+            except KeyboardInterrupt as e:
+                logger.info(f"SIGINT received. Killing job {job.job_id()}")
+                self.batch_v1.delete_namespaced_job(job.job_id(), self.namespace)
+                raise e
             self._print_pod_logs(job.job_id(), feature_view)
         return job
 
     def _print_pod_logs(self, job_id, feature_view):
         pods_list = self.v1.list_namespaced_pod(
-            namespace=self.batch_engine_config.namespace,
+            namespace=self.namespace,
             label_selector=f"job-name={job_id}",
         ).items
         for i, pod in enumerate(pods_list):
             logger.info(f"Logging output for {feature_view.name} pod {i}")
             try:
-                logger.info(self.v1.read_namespaced_pod_log(pod.metadata.name, self.batch_engine_config.namespace))
+                logger.info(self.v1.read_namespaced_pod_log(pod.metadata.name, self.namespace))
             except ApiException as e:
                 logger.warning(f"Could not retrieve pod logs due to: {e.body}")
 
