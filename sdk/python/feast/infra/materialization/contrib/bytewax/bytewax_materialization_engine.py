@@ -197,9 +197,12 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
                     logger.info(f"{feature_view.name} materialization still running...")
                     sleep(30)
                 logger.info(f"{feature_view.name} materialization complete with status {job.status()}")
-            except (KeyboardInterrupt, BaseException) as e:
+            except BaseException as e:
                 logger.info(f"Killing job {job.job_id()}")
-                self.batch_v1.delete_namespaced_job(job.job_id(), self.namespace)
+                try:
+                    self.batch_v1.delete_namespaced_job(job.job_id(), self.namespace)
+                except ApiException as de:
+                    logger.warning(f"Could not delete job due to API Error: {ae.body}")
                 raise e
             self._print_pod_logs(job.job_id(), feature_view)
         return job
@@ -287,7 +290,7 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
             },
             {
                 "name": "BYTEWAX_REPLICAS",
-                "value": f"{pods}",
+                "value": "1",
             },
             {
                 "name": "BYTEWAX_KEEP_CONTAINER_ALIVE",
@@ -321,8 +324,8 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
             "spec": {
                 "ttlSecondsAfterFinished": 3600,
                 "backoffLimit": self.batch_engine_config.retry_limit,
-                "completions": pods,
-                "parallelism": min(pods, self.batch_engine_config.max_parallelism),
+                "completions": 1,
+                "parallelism": 1,
                 "completionMode": "Indexed",
                 "template": {
                     "metadata": {
@@ -339,7 +342,7 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
                                 "env": [
                                     {
                                         "name": "BYTEWAX_REPLICAS",
-                                        "value": f"{pods}",
+                                        "value": "1",
                                     }
                                 ],
                                 "image": "busybox",
