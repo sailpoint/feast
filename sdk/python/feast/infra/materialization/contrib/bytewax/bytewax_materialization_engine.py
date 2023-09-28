@@ -326,7 +326,6 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
             "spec": {
                 "ttlSecondsAfterFinished": 3600,
                 "backoffLimit": self.batch_engine_config.retry_limit,
-
                 "completions": pods,
                 "parallelism": min(pods, self.batch_engine_config.max_parallelism),
                 "activeDeadlineSeconds": self.batch_engine_config.active_deadline_seconds,
