@@ -190,42 +190,58 @@ class BytewaxMaterializationEngine(BatchMaterializationEngine):
             end_date=end_date,
         )
 
-        job = None
         paths = offline_job.to_remote_storage()
         if self.batch_engine_config.synchronous:
+
+            offset = 0
             total_pods = len(paths)
-            for offset in range(0, total_pods, self.batch_engine_config.job_batch_size):
-                job_id = str(uuid.uuid4())
-
-                next_offset = min(total_pods, offset + self.batch_engine_config.job_batch_size)
-                job = self._create_kubernetes_job(job_id, paths[offset:next_offset], feature_view)
-
-                try:
-                    while job.status() in (MaterializationJobStatus.WAITING, MaterializationJobStatus.RUNNING):
-                        logger.info(f"{feature_view.name} materialization for pods {offset}-{next_offset-1} "
-                                    f"(of {total_pods}) running...")
-                        sleep(30)
-                    logger.info(f"{feature_view.name} materialization for pods {offset}-{next_offset-1} "
-                                f"(of {total_pods}) complete with status {job.status()}")
-                except BaseException as e:
-                    if self.batch_engine_config.print_pod_logs_on_failure:
-                        self._print_pod_logs(job.job_id(), feature_view, offset)
-
-                    logger.info(f"Deleting job {job.job_id()}")
-                    try:
-                        self.batch_v1.delete_namespaced_job(job.job_id(), self.namespace)
-                    except ApiException as ae:
-                        logger.warning(f"Could not delete job due to API Error: {ae.body}")
-                    raise e
-                finally:
-                    logger.info(f"Deleting configmap {self._configmap_name(job_id)}")
-                    try:
-                        self.v1.delete_namespaced_config_map(self._configmap_name(job_id), self.namespace)
-                    except ApiException as ae:
-                        logger.warning(f"Could not delete configmap due to API Error: {ae.body}")
+            batch_size = self.batch_engine_config.job_batch_size
+            assert(batch_size > 0, "job_batch_size must be a value greater than 0")
+            while True:
+                next_offset = min(offset+batch_size, total_pods)
+                job = self._await_path_materialization(
+                    paths[offset:next_offset],
+                    feature_view,
+                    offset,
+                    next_offset,
+                    total_pods,
+                )
+                offset += batch_size
+                if offset >= total_pods:
+                    break
         else:
             job_id = str(uuid.uuid4())
-            job = self._create_kubernetes_job(job_id,paths,feature_view)
+            job = self._create_kubernetes_job(job_id, paths, feature_view)
+
+        return job
+
+    def _await_path_materialization(self, paths, feature_view, batch_start, batch_end, total_pods):
+        job_id = str(uuid.uuid4())
+        job = self._create_kubernetes_job(job_id, paths, feature_view)
+
+        try:
+            while job.status() in (MaterializationJobStatus.WAITING, MaterializationJobStatus.RUNNING):
+                logger.info(f"{feature_view.name} materialization for pods {batch_start}-{batch_end} "
+                            f"(of {total_pods}) running...")
+                sleep(30)
+            logger.info(f"{feature_view.name} materialization for pods {batch_start}-{batch_end} "
+                        f"(of {total_pods}) complete with status {job.status()}")
+        except BaseException as e:
+            if self.batch_engine_config.print_pod_logs_on_failure:
+                self._print_pod_logs(job.job_id(), feature_view, batch_start)
+
+            logger.info(f"Deleting job {job.job_id()}")
+            try:
+                self.batch_v1.delete_namespaced_job(job.job_id(), self.namespace)
+            except ApiException as ae:
+                logger.warning(f"Could not delete job due to API Error: {ae.body}")
+            raise e
+        finally:
+            logger.info(f"Deleting configmap {self._configmap_name(job_id)}")
+            try:
+                self.v1.delete_namespaced_config_map(self._configmap_name(job_id), self.namespace)
+            except ApiException as ae:
+                logger.warning(f"Could not delete configmap due to API Error: {ae.body}")
 
         return job
 
