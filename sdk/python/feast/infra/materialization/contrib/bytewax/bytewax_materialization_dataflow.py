@@ -28,7 +28,8 @@ class BytewaxMaterializationDataflow:
 
         self.feature_view = feature_view
         self.worker_index = worker_index
-        self.paths = paths
+        # TODO: remove this hack and figure out how modify path when exporting data from snowflake
+        self.paths = [path.replace("s3gov://", "s3://") for path in paths]
 
         self._run_dataflow()
 
