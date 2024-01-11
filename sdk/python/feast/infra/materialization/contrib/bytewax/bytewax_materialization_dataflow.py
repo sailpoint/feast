@@ -28,12 +28,14 @@ class BytewaxMaterializationDataflow:
 
         self.feature_view = feature_view
         self.worker_index = worker_index
-        # TODO: remove this hack and figure out how modify path when exporting data from snowflake
-        self.paths = [path.replace("s3gov://", "s3://") for path in paths]
+
+        self.paths = paths
 
         self._run_dataflow()
 
     def process_path(self, path):
+        # TODO: remove this hack and figure out how modify path when exporting data from snowflake
+        path = path.replace("s3gov://", "s3://")
         dataset = pq.ParquetDataset(path, use_legacy_dataset=False)
         batches = []
         for fragment in dataset.fragments:
