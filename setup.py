@@ -381,7 +381,6 @@ setup(
         "Programming Language :: Python :: 3.7",
     ],
     entry_points={"console_scripts": ["feast=feast.cli:cli"]},
-    # use_scm_version=use_scm_version,
     setup_requires=[
         "setuptools_scm",
         "grpcio>=1.56.2,<2",
