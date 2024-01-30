@@ -1,7 +1,6 @@
-FROM python:3.9-slim-bullseye AS build
+FROM 406205545357.dkr.ecr.us-east-1.amazonaws.com/sailpoint/python3.10:1 AS build
 
-RUN apt-get update && \
-    apt-get install --no-install-suggests --no-install-recommends --yes git
+RUN dnf install --refresh -y git
 
 WORKDIR /bytewax
 
@@ -26,4 +25,3 @@ COPY README.md README.md
 # https://github.com/pypa/setuptools_scm#usage-from-docker
 # I think it also assumes that this dockerfile is being built from the root of the directory.
 RUN --mount=source=.git,target=.git,type=bind pip3 install --no-cache-dir '.[aws,gcp,bytewax,snowflake]'
-
