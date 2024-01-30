@@ -8,7 +8,7 @@ WORKDIR /bytewax
 # Copy dataflow code
 COPY sdk/python/feast/infra/materialization/contrib/bytewax/bytewax_materialization_dataflow.py /bytewax
 COPY sdk/python/feast/infra/materialization/contrib/bytewax/dataflow.py /bytewax
-
+COPY .git/ /bytewax/
 # Copy entrypoint
 COPY sdk/python/feast/infra/materialization/contrib/bytewax/entrypoint.sh /bytewax
 
