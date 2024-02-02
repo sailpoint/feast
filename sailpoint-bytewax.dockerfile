@@ -1,3 +1,4 @@
+# Original File: sdk/python/feast/infra/materialization/contrib/bytewax/Dockerfile
 FROM 406205545357.dkr.ecr.us-east-1.amazonaws.com/sailpoint/python3.10:1 AS build
 
 RUN dnf install --refresh -y git
