@@ -39,7 +39,7 @@ pipeline {
                         sh """
                             /kaniko/executor \
                                 --context ./ \
-                                --dockerfile ./sdk/python/feast/infra/materialization/contrib/bytewax/Dockerfile \
+                                --dockerfile ./sailpoint-bytewax.dockerfile \
                                 --build-arg  DOCKER_BUILDKIT=1 \
                                 --destination=${ECR_REPOSITORY}/${REPOSITORY_NAME}:${BUILD_NUMBER}
                         """
