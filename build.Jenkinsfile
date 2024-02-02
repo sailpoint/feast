@@ -13,7 +13,7 @@ pipeline {
     
     environment {
         
-        SERVICE_NAME = "bytewax"
+        SERVICE_NAME = "feast-bytewax"
         GITHUB_REPO = "git@github.com:sailpoint/feast.git"
         ECR_REPOSITORY = "${env.AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com"
         REPOSITORY_NAME = "sailpoint/${SERVICE_NAME}"
