@@ -38,7 +38,8 @@ build: protos build-java build-docker
 
 install-python-ci-dependencies:
 	python -m piptools sync sdk/python/requirements/py$(PYTHON)-ci-requirements.txt
-	COMPILE_GO=true python setup.py develop
+	pip install --no-deps -e .
+	python setup.py build_python_protos --inplace
 
 lock-python-ci-dependencies:
 	python -m piptools compile -U --extra ci --output-file sdk/python/requirements/py$(PYTHON)-ci-requirements.txt
@@ -186,6 +187,19 @@ test-python-universal-athena:
 			not test_snowflake" \
 	sdk/python/tests
 
+test-python-universal-duckdb:
+	PYTHONPATH='.' \
+	FULL_REPO_CONFIGS_MODULE=sdk.python.feast.infra.offline_stores.contrib.duckdb_repo_configuration \
+	FEAST_USAGE=False IS_TEST=True \
+	python -m pytest -n 8 --integration \
+		-k "not test_nullable_online_store and \
+			not gcs_registry and \
+			not s3_registry and \
+			not test_snowflake and \
+			not bigquery and \
+			not test_spark_materialization_consistency" \
+		sdk/python/tests
+			
 test-python-universal-postgres-offline:
 	PYTHONPATH='.' \
 		FULL_REPO_CONFIGS_MODULE=sdk.python.feast.infra.offline_stores.contrib.postgres_repo_configuration \
@@ -310,7 +324,7 @@ format-python:
 	cd ${ROOT_DIR}/sdk/python; python -m black --target-version py38 feast tests
 
 lint-python:
-	cd ${ROOT_DIR}/sdk/python; python -m mypy --exclude=/tests/ --follow-imports=skip feast
+	cd ${ROOT_DIR}/sdk/python; python -m mypy feast
 	cd ${ROOT_DIR}/sdk/python; python -m isort feast/ tests/ --check-only
 	cd ${ROOT_DIR}/sdk/python; python -m flake8 feast/ tests/
 	cd ${ROOT_DIR}/sdk/python; python -m black --check feast tests
